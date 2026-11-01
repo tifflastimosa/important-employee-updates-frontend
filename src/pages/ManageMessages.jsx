@@ -2,11 +2,13 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { api } from '../api.js';
 import { useSession } from '../session.jsx';
-import { ackCounts, audienceLabel, byPriorityThenDate, formatWhen, matchesSearch, PRIORITIES, useApi } from '../utils.js';
+import { ackCounts, audienceLabel, byDeadlineThenPriority, byPriorityThenDate, formatWhen, matchesSearch, PRIORITIES, useApi, useNow, withDueAt } from '../utils.js';
+import { DeadlineChip } from '../components/Deadline.jsx';
 import { AckProgress, ConfirmDialog, EmptyState, ErrorBanner, Loading, PriorityBadge, useToast } from '../components/ui.jsx';
 
 const SORTS = {
   priority: { label: 'Priority', fn: byPriorityThenDate },
+  deadline: { label: 'Due date', fn: byDeadlineThenPriority },
   newest: { label: 'Newest', fn: (a, b) => new Date(b.createdAt ?? 0) - new Date(a.createdAt ?? 0) },
   outstanding: { label: 'Most outstanding', fn: (a, b) => ackCounts(b).outstanding - ackCounts(a).outstanding || byPriorityThenDate(a, b) },
 };
@@ -15,9 +17,13 @@ export default function ManageMessages() {
   const { user } = useSession();
   const toast = useToast();
   const navigate = useNavigate();
-  const { data, error, loading, reload, setData } = useApi(() => api.listMessages(), []);
+  const { data, error, loading, reload, setData } = useApi(
+    () => api.listMessages().then((list) => list.map((m) => withDueAt(m))),
+    [],
+  );
+  const now = useNow(30_000);
   const [priority, setPriority] = useState('ALL');
-  const [status, setStatus] = useState('ALL');
+  const [status, setStatus] = useState('ALL'); // ALL | OPEN | OVERDUE | DONE
   const [mineOnly, setMineOnly] = useState(false);
   const [sort, setSort] = useState('priority');
   const [query, setQuery] = useState('');
@@ -32,15 +38,17 @@ export default function ManageMessages() {
       total: messages.length,
       open: open.length,
       urgentOpen: open.filter((m) => m.priority === 'URGENT').length,
+      overdue: open.filter((m) => m.dueAt != null && m.dueAt < now).length,
       waitingPeople: open.reduce((sum, m) => sum + ackCounts(m).outstanding, 0),
     };
-  }, [messages]);
+  }, [messages, now]);
 
   const visible = messages
     .filter((m) => priority === 'ALL' || m.priority === priority)
     .filter((m) => {
       if (status === 'ALL') return true;
       const { outstanding } = ackCounts(m);
+      if (status === 'OVERDUE') return outstanding > 0 && m.dueAt != null && m.dueAt < now;
       return status === 'OPEN' ? outstanding > 0 : outstanding === 0;
     })
     .filter((m) => !mineOnly || m.author?.id === user.id)
@@ -78,6 +86,7 @@ export default function ManageMessages() {
         <Stat label="Messages" value={stats.total} />
         <Stat label="Awaiting acknowledgement" value={stats.open} onClick={() => setStatus('OPEN')} />
         <Stat label="Urgent & still open" value={stats.urgentOpen} tone={stats.urgentOpen ? 'urgent' : null} onClick={() => { setStatus('OPEN'); setPriority('URGENT'); }} />
+        <Stat label="Past deadline & still open" value={stats.overdue} tone={stats.overdue ? 'urgent' : null} onClick={() => { setStatus('OVERDUE'); setPriority('ALL'); }} />
         <Stat label="Acknowledgements outstanding" value={stats.waitingPeople} />
       </div>
 
@@ -86,6 +95,7 @@ export default function ManageMessages() {
           <select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
             <option value="ALL">All statuses</option>
             <option value="OPEN">Awaiting acknowledgement</option>
+            <option value="OVERDUE">Past deadline</option>
             <option value="DONE">Fully acknowledged</option>
           </select>
           <select value={priority} onChange={(e) => setPriority(e.target.value)} aria-label="Filter by priority">
@@ -131,9 +141,12 @@ export default function ManageMessages() {
                   <span className="muted small">To {audienceLabel(m)}</span>
                 </div>
                 <h3 className="message-card-title">{m.title}</h3>
-                <p className="muted small">
-                  {m.author?.id === user.id ? 'You' : m.author?.fullName} · {formatWhen(m.createdAt)}
-                </p>
+                <div className="message-card-bottom">
+                  <span className="muted small">
+                    {m.author?.id === user.id ? 'You' : m.author?.fullName} · {formatWhen(m.createdAt)}
+                  </span>
+                  <DeadlineChip message={m} now={now} live={ackCounts(m).outstanding > 0} />
+                </div>
               </Link>
               <div className="manage-row-side">
                 <AckProgress message={m} compact />

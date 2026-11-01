@@ -1,5 +1,20 @@
 import { useMemo, useState } from 'react';
-import { PRIORITIES } from '../utils.js';
+import { formatDeadline, localTimeZone, PRIORITIES, toLocalInput } from '../utils.js';
+
+/** A date `daysAhead` days from now at `hour`:00 local time. */
+function presetAt(daysAhead, hour = 17) {
+  const d = new Date();
+  d.setDate(d.getDate() + daysAhead);
+  d.setHours(hour, 0, 0, 0);
+  return d;
+}
+
+const DEADLINE_PRESETS = [
+  { label: 'Today 11 PM', at: () => presetAt(0, 23) },
+  { label: 'Tomorrow 5 PM', at: () => presetAt(1) },
+  { label: 'In 3 days', at: () => presetAt(3) },
+  { label: 'In 1 week', at: () => presetAt(7) },
+];
 
 /**
  * Create/edit form for an important message.
@@ -12,6 +27,11 @@ export default function MessageForm({ initial, employees, authorId, submitLabel,
   const [audience, setAudience] = useState(initial?.targetDepartments?.length ? 'departments' : 'everyone');
   const [departments, setDepartments] = useState(() => new Set(initial?.targetDepartments ?? []));
   const [touched, setTouched] = useState(false);
+  // Kept as the <input type="datetime-local"> string. If the manager doesn't touch it we send the
+  // original ISO value back unchanged, so an already-passed deadline can still be saved as-is.
+  const initialDeadline = toLocalInput(initial?.deadline);
+  const [deadlineInput, setDeadlineInput] = useState(initialDeadline);
+  const deadlineChanged = deadlineInput !== initialDeadline;
 
   const allDepartments = useMemo(
     () => [...new Set(employees.map((e) => e.department).filter(Boolean))].sort(),
@@ -30,6 +50,8 @@ export default function MessageForm({ initial, employees, authorId, submitLabel,
     title: !title.trim() && 'Give the message a title.',
     content: !content.trim() && 'Write the message.',
     departments: audience === 'departments' && departments.size === 0 && 'Pick at least one department.',
+    deadline:
+      deadlineChanged && deadlineInput && new Date(deadlineInput) <= new Date() && 'Pick a time in the future.',
   };
   const fieldErrors = serverError?.fieldErrors ?? {};
   const hasErrors = Object.values(errors).some(Boolean);
@@ -52,6 +74,11 @@ export default function MessageForm({ initial, employees, authorId, submitLabel,
       content: content.trim(),
       priority,
       targetDepartments: audience === 'everyone' ? [] : [...departments],
+      deadline: !deadlineChanged
+        ? initial?.deadline ?? null
+        : deadlineInput
+          ? new Date(deadlineInput).toISOString()
+          : null,
     });
   }
 
@@ -91,6 +118,44 @@ export default function MessageForm({ initial, employees, authorId, submitLabel,
             </label>
           ))}
         </div>
+      </fieldset>
+
+      <fieldset className="field">
+        <legend>Acknowledge by <span className="muted optional">(optional)</span></legend>
+        <div className="deadline-input-row">
+          <input
+            id="deadline"
+            type="datetime-local"
+            value={deadlineInput}
+            min={toLocalInput(new Date())}
+            onChange={(e) => setDeadlineInput(e.target.value)}
+            aria-invalid={Boolean(showError('deadline'))}
+            aria-describedby="deadline-hint"
+          />
+          {deadlineInput && (
+            <button type="button" className="btn btn-ghost btn-small" onClick={() => setDeadlineInput('')}>
+              Remove deadline
+            </button>
+          )}
+        </div>
+        <div className="chip-group" role="group" aria-label="Quick deadlines">
+          {DEADLINE_PRESETS.map((p) => (
+            <button
+              key={p.label}
+              type="button"
+              className="chip chip-button"
+              onClick={() => setDeadlineInput(toLocalInput(p.at()))}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <p id="deadline-hint" className="muted small field-hint">
+          {deadlineInput
+            ? `Employees will see a countdown to ${formatDeadline(new Date(deadlineInput))} (${localTimeZone()}).`
+            : 'No deadline — employees won’t see a countdown.'}
+        </p>
+        {showError('deadline') && <p className="field-error">{showError('deadline')}</p>}
       </fieldset>
 
       <div className="field">

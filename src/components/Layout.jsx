@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { api } from '../api.js';
 import { useSession } from '../session.jsx';
-import { canPublish } from '../utils.js';
+import { canPublish, workplaceLabel } from '../utils.js';
 import { Wordmark } from './Logo.jsx';
 
 export default function Layout() {
@@ -59,7 +59,7 @@ export default function Layout() {
               <span className="user-chip-text">
                 <span className="user-name">{user.fullName}</span>
                 <span className="user-meta">
-                  {user.department} · {user.role.toLowerCase()}
+                  {[workplaceLabel(user), user.role.toLowerCase()].filter(Boolean).join(' · ')}
                 </span>
               </span>
             </div>

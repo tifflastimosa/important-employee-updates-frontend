@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { api } from '../api.js';
 import { useSession } from '../session.jsx';
-import { canPublish, useApi } from '../utils.js';
+import { canPublish, useApi, workplaceLabel } from '../utils.js';
 import { ErrorBanner } from '../components/ui.jsx';
 import { COMPANY_NAME, LogoMark, Wordmark } from '../components/Logo.jsx';
 
@@ -12,6 +12,7 @@ const EMPTY_EMPLOYEE = {
   email: '',
   employeeNumber: '',
   department: '',
+  storeNumber: '',
   jobTitle: '',
   role: 'EMPLOYEE',
 };
@@ -55,14 +56,8 @@ export default function SignIn() {
         <div className="login-brand-inner">
           <Wordmark size={44} subtitle={false} />
           <div className="login-brand-copy">
-            <h2>Never miss what matters.</h2>
-            <p>Important updates for every store, warehouse and office across {COMPANY_NAME} — in one place.</p>
+            <h2>Employee Message Hub</h2>
           </div>
-          <ul className="login-brand-points">
-            <li>See what needs your attention first</li>
-            <li>Acknowledge updates in a click</li>
-            <li>Managers see who's up to date</li>
-          </ul>
         </div>
         <div className="login-sun" />
       </aside>
@@ -136,7 +131,7 @@ export default function SignIn() {
                         </span>
                         <span className="person-text">
                           <span className="person-name">{e.fullName}</span>
-                          <span className="muted">{[e.jobTitle, e.department].filter(Boolean).join(' · ')}</span>
+                          <span className="muted">{[e.jobTitle, workplaceLabel(e)].filter(Boolean).join(' · ')}</span>
                         </span>
                         {canPublish(e) && <span className="tag tag-role">{e.role.toLowerCase()}</span>}
                       </button>
@@ -196,6 +191,7 @@ function NewEmployeeForm({ onCreated, onCancel }) {
         {field('email', 'Work email', { type: 'email', required: true })}
         {field('employeeNumber', 'Employee number', { required: true })}
         {field('department', 'Department', { required: true, placeholder: 'e.g. Store Operations' })}
+        {field('storeNumber', 'Store number', { required: true, inputMode: 'numeric', placeholder: 'e.g. 0042' })}
         {field('jobTitle', 'Job title')}
       </div>
       <div className="field">
