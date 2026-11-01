@@ -39,8 +39,20 @@ src/
   pages/               SignIn, Inbox, MessageView, ManageMessages, MessageStatus, EditMessage
 ```
 
-## Deploying
+## Deploying to Heroku
 
-`npm run build` outputs static files to `dist/`. If the site is served from a different
-origin than the API, set `VITE_API_BASE_URL` at build time **and** enable CORS for that
-origin in the backend (it has no CORS configuration yet).
+The Node buildpack runs `npm run build` (Vite → `dist/`) during the build, then `npm start`,
+which serves `dist/` with [`serve`](https://www.npmjs.com/package/serve) on Heroku's `$PORT`.
+`-s` sends unknown paths to `index.html`, so links like `/inbox` work on refresh.
+
+The frontend and API are separate Heroku apps, so two config vars connect them:
+
+```sh
+# Frontend: where the API lives. Read at BUILD time, so redeploy after changing it.
+heroku config:set VITE_API_BASE_URL=https://<backend-app>.herokuapp.com -a <frontend-app>
+
+# Backend: allow the frontend's origin through CORS.
+heroku config:set APP_CORS_ALLOWED_ORIGINS=https://<frontend-app>.herokuapp.com -a <backend-app>
+```
+
+To try the production build locally: `npm run build && npm start` (http://localhost:3000).
