@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { api } from '../api.js';
 import { useSession } from '../session.jsx';
 import { canPublish } from '../utils.js';
+import { Wordmark } from './Logo.jsx';
 
 export default function Layout() {
   const { user, signOut } = useSession();
@@ -28,9 +29,8 @@ export default function Layout() {
     <div className="app">
       <header className="topbar">
         <div className="topbar-inner">
-          <Link to="/" className="brand">
-            <span className="brand-mark" aria-hidden="true">!</span>
-            Important Updates
+          <Link to="/" className="brand" aria-label="Summer Retail Group Important Updates — home">
+            <Wordmark size={32} />
           </Link>
 
           <nav className="nav" aria-label="Main">

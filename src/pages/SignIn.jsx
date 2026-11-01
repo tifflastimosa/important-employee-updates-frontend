@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router';
 import { api } from '../api.js';
 import { useSession } from '../session.jsx';
 import { canPublish, useApi } from '../utils.js';
-import { EmptyState, ErrorBanner, Loading } from '../components/ui.jsx';
+import { ErrorBanner } from '../components/ui.jsx';
+import { COMPANY_NAME, LogoMark, Wordmark } from '../components/Logo.jsx';
 
 const EMPTY_EMPLOYEE = {
   firstName: '',
@@ -15,91 +16,146 @@ const EMPTY_EMPLOYEE = {
   role: 'EMPLOYEE',
 };
 
+// Prototype sign-in: the backend has no authentication yet, so we look the employee up by
+// work email. Swap this for a real login endpoint once the backend supports one.
 export default function SignIn() {
   const { signIn } = useSession();
   const navigate = useNavigate();
-  const { data: employees, error, loading, reload } = useApi(() => api.listEmployees(), []);
-  const [query, setQuery] = useState('');
+  const { data: employees, error: loadError, loading, reload } = useApi(() => api.listEmployees(), []);
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState(null);
+  const [showDemo, setShowDemo] = useState(false);
   const [adding, setAdding] = useState(false);
 
-  function choose(employee) {
+  function enter(employee) {
     signIn(employee);
     navigate(canPublish(employee) ? '/manage' : '/inbox');
   }
 
-  const sorted = [...(employees ?? [])].sort((a, b) => a.fullName.localeCompare(b.fullName));
-  const q = query.trim().toLowerCase();
-  const visible = q
-    ? sorted.filter((e) => [e.fullName, e.department, e.jobTitle, e.email].some((t) => t?.toLowerCase().includes(q)))
-    : sorted;
+  function submit(event) {
+    event.preventDefault();
+    const value = email.trim().toLowerCase();
+    if (!value) {
+      setError('Enter your work email.');
+      return;
+    }
+    const match = employees?.find((e) => e.email?.toLowerCase() === value);
+    if (!match) {
+      setError("We couldn't find a Summer Retail Group account with that email.");
+      return;
+    }
+    enter(match);
+  }
+
+  const people = [...(employees ?? [])].sort((a, b) => a.fullName.localeCompare(b.fullName));
 
   return (
-    <div className="signin">
-      <div className="signin-card">
-        <div className="signin-header">
-          <span className="brand-mark brand-mark-lg" aria-hidden="true">!</span>
-          <h1>Important Updates</h1>
-          <p className="muted">
-            Choose who you are to continue. <span className="tag">Prototype</span> there are no passwords yet.
-          </p>
+    <div className="login">
+      <aside className="login-brand" aria-hidden="true">
+        <div className="login-brand-inner">
+          <Wordmark size={44} subtitle={false} />
+          <div className="login-brand-copy">
+            <h2>Never miss what matters.</h2>
+            <p>Important updates for every store, warehouse and office across {COMPANY_NAME} — in one place.</p>
+          </div>
+          <ul className="login-brand-points">
+            <li>See what needs your attention first</li>
+            <li>Acknowledge updates in a click</li>
+            <li>Managers see who's up to date</li>
+          </ul>
         </div>
+        <div className="login-sun" />
+      </aside>
 
-        <ErrorBanner error={error} onRetry={reload} />
+      <main className="login-main">
+        <div className="login-panel">
+          <div className="login-mobile-brand">
+            <LogoMark size={40} />
+          </div>
+          <h1>Sign in</h1>
+          <p className="muted">Welcome back to {COMPANY_NAME} Important Updates.</p>
 
-        {loading && !employees ? (
-          <Loading label="Loading people…" />
-        ) : (
-          <>
-            {sorted.length > 6 && (
+          <ErrorBanner error={loadError} onRetry={reload} />
+
+          <form className="login-form" onSubmit={submit} noValidate>
+            <div className="field">
+              <label htmlFor="email">Work email</label>
               <input
-                type="search"
-                className="search"
-                placeholder="Search by name or department"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                id="email"
+                type="email"
+                autoComplete="username"
+                placeholder="you@summerretailgroup.com"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError(null);
+                }}
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? 'email-error' : undefined}
+                autoFocus
               />
-            )}
-            {sorted.length === 0 && !error && (
-              <EmptyState title="No one here yet">Add the first person below to get started.</EmptyState>
-            )}
-            <ul className="people-list">
-              {visible.map((e) => (
-                <li key={e.id}>
-                  <button type="button" className="person" onClick={() => choose(e)}>
-                    <span className="avatar" aria-hidden="true">
-                      {e.firstName?.[0]}
-                      {e.lastName?.[0]}
-                    </span>
-                    <span className="person-text">
-                      <span className="person-name">{e.fullName}</span>
-                      <span className="muted">
-                        {[e.jobTitle, e.department].filter(Boolean).join(' · ')}
-                      </span>
-                    </span>
-                    {canPublish(e) && <span className="tag tag-role">{e.role.toLowerCase()}</span>}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-
-        <div className="signin-footer">
-          {adding ? (
-            <NewEmployeeForm
-              onCancel={() => setAdding(false)}
-              onCreated={(employee) => {
-                setAdding(false);
-                choose(employee);
-              }}
-            />
-          ) : (
-            <button type="button" className="btn btn-ghost" onClick={() => setAdding(true)}>
-              + Add a person
+              {error && (
+                <p id="email-error" className="field-error">
+                  {error}
+                </p>
+              )}
+            </div>
+            <button type="submit" className="btn btn-primary btn-large btn-block" disabled={loading}>
+              {loading ? 'Connecting…' : 'Sign in'}
             </button>
-          )}
+          </form>
+
+          <p className="login-help muted small">
+            Trouble signing in? Contact your store manager or HR.
+          </p>
+
+          <section className="login-demo">
+            <button
+              type="button"
+              className="login-demo-toggle"
+              aria-expanded={showDemo}
+              onClick={() => setShowDemo((v) => !v)}
+            >
+              <span className="tag">Prototype</span> Demo accounts &amp; setup
+              <span className="login-demo-chevron" aria-hidden="true">{showDemo ? '▴' : '▾'}</span>
+            </button>
+
+            {showDemo && (
+              <div className="login-demo-body">
+                <p className="muted small">
+                  There are no passwords yet. Pick an account to sign in as that person.
+                </p>
+                {people.length === 0 && !loading && <p className="muted small">No accounts yet — add one below.</p>}
+                <ul className="people-list">
+                  {people.map((e) => (
+                    <li key={e.id}>
+                      <button type="button" className="person" onClick={() => enter(e)}>
+                        <span className="avatar" aria-hidden="true">
+                          {e.firstName?.[0]}
+                          {e.lastName?.[0]}
+                        </span>
+                        <span className="person-text">
+                          <span className="person-name">{e.fullName}</span>
+                          <span className="muted">{[e.jobTitle, e.department].filter(Boolean).join(' · ')}</span>
+                        </span>
+                        {canPublish(e) && <span className="tag tag-role">{e.role.toLowerCase()}</span>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {adding ? (
+                  <NewEmployeeForm onCancel={() => setAdding(false)} onCreated={enter} />
+                ) : (
+                  <button type="button" className="btn btn-ghost btn-small" onClick={() => setAdding(true)}>
+                    + Add a person
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
         </div>
-      </div>
+        <footer className="login-footer muted small">© {new Date().getFullYear()} {COMPANY_NAME}</footer>
+      </main>
     </div>
   );
 }
@@ -119,7 +175,6 @@ function NewEmployeeForm({ onCreated, onCancel }) {
       onCreated(await api.createEmployee(form));
     } catch (err) {
       setError(err);
-    } finally {
       setBusy(false);
     }
   }
@@ -140,7 +195,7 @@ function NewEmployeeForm({ onCreated, onCancel }) {
         {field('lastName', 'Last name', { required: true })}
         {field('email', 'Work email', { type: 'email', required: true })}
         {field('employeeNumber', 'Employee number', { required: true })}
-        {field('department', 'Department', { required: true, placeholder: 'e.g. Engineering' })}
+        {field('department', 'Department', { required: true, placeholder: 'e.g. Store Operations' })}
         {field('jobTitle', 'Job title')}
       </div>
       <div className="field">
@@ -157,7 +212,7 @@ function NewEmployeeForm({ onCreated, onCancel }) {
           Cancel
         </button>
         <button type="submit" className="btn btn-primary" disabled={busy}>
-          {busy ? 'Adding…' : 'Add and continue'}
+          {busy ? 'Adding…' : 'Add and sign in'}
         </button>
       </div>
     </form>
