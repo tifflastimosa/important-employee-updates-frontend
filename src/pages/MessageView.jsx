@@ -39,12 +39,7 @@ export default function MessageView() {
       setData(withDueAt(await api.acknowledge(message.id, user.id)));
       toast('Thanks — your acknowledgement was recorded.');
     } catch (err) {
-      // Employees created before store numbers were required can't save their profile.
-      setAckError(
-        err.fieldErrors?.storeNumber
-          ? new Error('Your profile is missing a store number, so we couldn’t record your consent. Ask your manager or HR to add it.')
-          : err,
-      );
+      setAckError(err);
     } finally {
       setBusy(false);
     }

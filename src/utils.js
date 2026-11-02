@@ -9,7 +9,7 @@ export const PRIORITIES = [
 
 export const priorityMeta = (value) => PRIORITIES.find((p) => p.value === value) ?? PRIORITIES[2];
 
-/** "Store 0042", or null for employees created before store numbers existed. */
+/** "Store 0042", or null for employees without a store number. */
 export const storeLabel = (employee) => (employee?.storeNumber ? `Store ${employee.storeNumber}` : null);
 
 /** "Engineering · Store 0042" (skips whatever is missing). */

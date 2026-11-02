@@ -10,7 +10,9 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       proxy: {
-        '/api': env.BACKEND_URL || 'http://localhost:8080',
+        // changeOrigin rewrites the Host header to the target's, which Heroku needs
+        // to route the request to the right app.
+        '/api': { target: env.BACKEND_URL || 'http://localhost:8080', changeOrigin: true },
       },
     },
   };
