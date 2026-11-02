@@ -30,11 +30,16 @@ export default function MessageView() {
     try {
       if (needsConsent) {
         const { employeeNumber, firstName, lastName, email, department, storeNumber, jobTitle, role } = user;
-        const updated = await api.updateEmployee(user.id, {
-          employeeNumber, firstName, lastName, email, department, storeNumber, jobTitle, role,
-          agreedToElectronicSignature: true,
-        });
-        setUser(updated);
+        try {
+          const updated = await api.updateEmployee(user.id, {
+            employeeNumber, firstName, lastName, email, department, storeNumber, jobTitle, role,
+            agreedToElectronicSignature: true,
+          });
+          setUser(updated);
+        } catch (err) {
+          // Saving consent is part of the profile; a profile problem shouldn't block acknowledging.
+          console.warn('Could not save e-signature consent; acknowledging anyway.', err);
+        }
       }
       setData(withDueAt(await api.acknowledge(message.id, user.id)));
       toast('Thanks — your acknowledgement was recorded.');
