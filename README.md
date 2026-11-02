@@ -6,16 +6,34 @@ Built with React 19, React Router and Vite. It talks to the Spring Boot API in
 
 ## Run it locally
 
-1. Start the backend (port 8080), e.g. from the backend repo: `./mvnw spring-boot:run`
-2. In this repo:
+You need [Node.js](https://nodejs.org/) 24.
+
+In development, Vite forwards every `/api` request to the backend named by `BACKEND_URL`
+in `.env` (default `http://localhost:8080`; see `.env.example`). Because the browser only
+talks to the Vite dev server, the backend doesn't need any CORS setup for this.
+
+### Against the deployed backend (quickest)
+
+No Java or database needed. Note that you'll be reading and changing the live prototype's data.
+
+```sh
+npm install
+echo "BACKEND_URL=https://important-employee-backend-f36c59d32d64.herokuapp.com" > .env
+npm run dev
+```
+
+Open http://localhost:5173 and choose who you are.
+
+### Against a local backend
+
+1. Start the backend (port 8080), e.g. from the
+   [backend repo](../important-employee-updates-backend): `./mvnw spring-boot:run`
+2. In this repo (no `.env` needed):
    ```sh
    npm install
    npm run dev
    ```
 3. Open http://localhost:5173 and choose who you are.
-
-In development, Vite forwards every `/api` request to `http://localhost:8080`
-(override with `BACKEND_URL` in `.env`; see `.env.example`).
 
 ## What's in it
 
