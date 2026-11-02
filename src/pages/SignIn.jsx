@@ -191,7 +191,7 @@ function NewEmployeeForm({ onCreated, onCancel }) {
         {field('email', 'Work email', { type: 'email', required: true })}
         {field('employeeNumber', 'Employee number', { required: true })}
         {field('department', 'Department', { required: true, placeholder: 'e.g. Store Operations' })}
-        {field('storeNumber', 'Store number', { required: true, inputMode: 'numeric', placeholder: 'e.g. 0042' })}
+        {field('storeNumber', 'Store number (optional)', { inputMode: 'numeric', placeholder: 'e.g. 0042' })}
         {field('jobTitle', 'Job title')}
       </div>
       <div className="field">
